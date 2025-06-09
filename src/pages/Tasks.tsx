@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -95,7 +94,9 @@ const Tasks = () => {
       const [tasksRes, projectsRes, usersRes] = await Promise.all([
         fetch('http://localhost:3001/api/tasks', { headers }),
         fetch('http://localhost:3001/api/projects', { headers }),
-        fetch('http://localhost:3001/api/users', { headers }).catch(() => ({ ok: false }))
+        fetch('http://localhost:3001/api/users', { headers })
+          .then(response => response)
+          .catch(() => null)
       ]);
 
       if (tasksRes.ok) {
@@ -108,7 +109,7 @@ const Tasks = () => {
         setProjects(projectsData);
       }
 
-      if (usersRes.ok) {
+      if (usersRes && usersRes.ok) {
         const usersData = await usersRes.json();
         setUsers(usersData);
       }
