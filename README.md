@@ -1,73 +1,153 @@
-# Welcome to your Lovable project
 
-## Project info
+# Sistema de Gestão de Projetos
 
-**URL**: https://lovable.dev/projects/9b685fde-5625-404f-92c7-cd20b97d8a46
+Sistema fullstack completo para gerenciamento de projetos e tarefas, desenvolvido com arquitetura Onion no backend e React no frontend.
 
-## How can I edit this code?
+## 🌟 Características Principais
 
-There are several ways of editing your application.
+- **Autenticação JWT** com client_id e client_secret
+- **Controle de Acesso** baseado em roles (admin/colaborador)
+- **Gestão Completa** de projetos e tarefas
+- **Interface Moderna** e responsiva
+- **Arquitetura Limpa** e escalável
 
-**Use Lovable**
+## 🚀 Tecnologias
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/9b685fde-5625-404f-92c7-cd20b97d8a46) and start prompting.
+### Backend
+- **Node.js** + **Express.js**
+- **SQLite** para persistência local
+- **JWT** para autenticação
+- **Arquitetura Onion** (Clean Architecture)
 
-Changes made via Lovable will be committed automatically to this repo.
+### Frontend
+- **React** + **TypeScript**
+- **Tailwind CSS** para estilização
+- **Shadcn/UI** para componentes
+- **React Router** para navegação
 
-**Use your preferred IDE**
+## 📋 Funcionalidades
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 👨‍💼 Administrador
+- ✅ CRUD completo de projetos
+- ✅ CRUD completo de tarefas
+- ✅ Atribuição de tarefas a usuários
+- ✅ Visualização de todos os dados
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+### 👨‍💻 Colaborador
+- ✅ Visualização de projetos
+- ✅ Visualização de tarefas atribuídas
+- ✅ Atualização de status das próprias tarefas
 
-Follow these steps:
+## 🛠️ Como Executar
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+### 1. Backend
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+```bash
+cd backend
+npm install
+npm run init-db
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+O backend estará rodando em `http://localhost:3001`
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### 2. Frontend
 
-**Use GitHub Codespaces**
+```bash
+npm install
+npm run dev
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+O frontend estará rodando em `http://localhost:8080`
 
-## What technologies are used for this project?
+## 🔐 Credenciais de Acesso
 
-This project is built with:
+### Administrador
+- **Client ID:** `admin_client`
+- **Client Secret:** `admin_secret_123`
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+### Colaborador
+- **Client ID:** `colaborador_client`
+- **Client Secret:** `colaborador_secret_123`
 
-## How can I deploy this project?
+## 📁 Estrutura do Projeto
 
-Simply open [Lovable](https://lovable.dev/projects/9b685fde-5625-404f-92c7-cd20b97d8a46) and click on Share -> Publish.
+```
+projeto/
+├── backend/                   # API Node.js
+│   ├── src/
+│   │   ├── domain/           # Entidades e interfaces
+│   │   ├── application/      # Casos de uso
+│   │   ├── infrastructure/   # Repositórios e serviços
+│   │   └── presentation/     # Rotas e middlewares
+│   ├── index.js
+│   └── package.json
+├── src/                      # Frontend React
+│   ├── pages/               # Páginas da aplicação
+│   │   ├── Login.tsx
+│   │   ├── Dashboard.tsx
+│   │   ├── Projects.tsx
+│   │   └── Tasks.tsx
+│   └── components/          # Componentes reutilizáveis
+├── package.json
+└── README.md
+```
 
-## Can I connect a custom domain to my Lovable project?
+## 🎯 Entidades do Sistema
 
-Yes, you can!
+### User
+- ID, nome, email, role
+- Client ID e Client Secret para autenticação
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+### Project
+- ID, nome, descrição
+- Proprietário (owner_id)
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+### Task
+- ID, título, descrição
+- Projeto associado, usuário atribuído
+- Status (pendente, em progresso, concluída)
+
+## 📱 Páginas da Aplicação
+
+1. **Login** - Autenticação com credenciais
+2. **Dashboard** - Visão geral com estatísticas
+3. **Projetos** - Gestão de projetos
+4. **Tarefas** - Gestão de tarefas
+
+## 🎨 Design
+
+- **Tema:** Moderno com gradientes azuis
+- **Layout:** Responsivo e intuitivo
+- **Componentes:** Cards, badges, dialogs
+- **Animações:** Transições suaves
+
+## 🔄 Fluxo de Trabalho
+
+1. **Login** com client_id/client_secret
+2. **Dashboard** com visão geral dos dados
+3. **Criação de Projetos** (admin)
+4. **Atribuição de Tarefas** (admin)
+5. **Acompanhamento** do progresso
+6. **Atualização de Status** pelos colaboradores
+
+## 🛡️ Segurança
+
+- Tokens JWT com expiração
+- Middleware de autenticação
+- Controle de acesso baseado em roles
+- Validação de dados de entrada
+
+## 📊 Banco de Dados
+
+O sistema utiliza SQLite com as seguintes tabelas:
+
+- `users` - Usuários do sistema
+- `projects` - Projetos cadastrados
+- `tasks` - Tarefas dos projetos
+
+Dados iniciais são criados automaticamente com o comando `npm run init-db`.
+
+---
+
+**Desenvolvido com ❤️ usando as melhores práticas de desenvolvimento**
