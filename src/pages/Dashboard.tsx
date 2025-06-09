@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   FolderOpen, 
   CheckSquare, 
@@ -28,7 +29,7 @@ interface Project {
   id: string;
   name: string;
   description: string;
-  ownerName: string;
+  owner_name: string;
 }
 
 interface Task {
@@ -36,8 +37,8 @@ interface Task {
   title: string;
   description: string;
   status: string;
-  projectName: string;
-  assignedName?: string;
+  project_name: string;
+  assigned_name?: string;
 }
 
 const Dashboard = () => {
@@ -57,29 +58,59 @@ const Dashboard = () => {
     }
 
     setUser(JSON.parse(userData));
-    fetchData(token);
+    fetchData();
   }, [navigate]);
 
-  const fetchData = async (token: string) => {
+  const fetchData = async () => {
     try {
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
+      // Buscar projetos com informações do dono
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select(`
+          id,
+          name,
+          description,
+          created_at,
+          users!projects_owner_id_fkey(name)
+        `);
 
-      const [projectsRes, tasksRes] = await Promise.all([
-        fetch('http://localhost:3001/api/projects', { headers }),
-        fetch('http://localhost:3001/api/tasks', { headers })
-      ]);
-
-      if (projectsRes.ok) {
-        const projectsData = await projectsRes.json();
-        setProjects(projectsData);
+      if (projectsError) {
+        console.error('Error fetching projects:', projectsError);
+      } else {
+        const formattedProjects = projectsData?.map(project => ({
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          owner_name: project.users?.name || 'Desconhecido'
+        })) || [];
+        setProjects(formattedProjects);
       }
 
-      if (tasksRes.ok) {
-        const tasksData = await tasksRes.json();
-        setTasks(tasksData);
+      // Buscar tarefas com informações do projeto e usuário atribuído
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select(`
+          id,
+          title,
+          description,
+          status,
+          created_at,
+          projects!tasks_project_id_fkey(name),
+          users!tasks_assigned_to_fkey(name)
+        `);
+
+      if (tasksError) {
+        console.error('Error fetching tasks:', tasksError);
+      } else {
+        const formattedTasks = tasksData?.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          project_name: task.projects?.name || 'Projeto Desconhecido',
+          assigned_name: task.users?.name
+        })) || [];
+        setTasks(formattedTasks);
       }
     } catch (error) {
       toast({
@@ -261,7 +292,7 @@ const Dashboard = () => {
                     <div>
                       <h4 className="font-medium text-gray-900">{project.name}</h4>
                       <p className="text-sm text-gray-600">{project.description}</p>
-                      <p className="text-xs text-gray-500 mt-1">Por: {project.ownerName}</p>
+                      <p className="text-xs text-gray-500 mt-1">Por: {project.owner_name}</p>
                     </div>
                     <Button variant="outline" size="sm" onClick={() => navigate('/projects')}>
                       Ver Detalhes
@@ -302,7 +333,7 @@ const Dashboard = () => {
                       </div>
                       <p className="text-sm text-gray-600 mb-2">{task.description}</p>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">{task.projectName}</Badge>
+                        <Badge variant="outline">{task.project_name}</Badge>
                         {getStatusBadge(task.status)}
                       </div>
                     </div>

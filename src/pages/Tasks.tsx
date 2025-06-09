@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   CheckSquare, 
   Plus, 
@@ -38,11 +40,11 @@ interface Task {
   title: string;
   description: string;
   status: string;
-  projectId: string;
-  projectName: string;
-  assignedTo: string;
-  assignedName?: string;
-  createdAt: string;
+  project_id: string;
+  project_name: string;
+  assigned_to: string;
+  assigned_name?: string;
+  created_at: string;
 }
 
 interface TaskUser {
@@ -64,8 +66,8 @@ const Tasks = () => {
   const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    projectId: selectedProjectId || '',
-    assignedTo: '',
+    project_id: selectedProjectId || '',
+    assigned_to: '',
     status: 'pending'
   });
 
@@ -81,37 +83,66 @@ const Tasks = () => {
     }
 
     setUser(JSON.parse(userData));
-    fetchData(token);
+    fetchData();
   }, [navigate]);
 
-  const fetchData = async (token: string) => {
+  const fetchData = async () => {
     try {
-      const headers = {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
+      // Buscar tarefas com informações do projeto e usuário
+      const { data: tasksData, error: tasksError } = await supabase
+        .from('tasks')
+        .select(`
+          id,
+          title,
+          description,
+          status,
+          project_id,
+          assigned_to,
+          created_at,
+          projects!tasks_project_id_fkey(name),
+          users!tasks_assigned_to_fkey(name)
+        `)
+        .order('created_at', { ascending: false });
 
-      const [tasksRes, projectsRes, usersRes] = await Promise.all([
-        fetch('http://localhost:3001/api/tasks', { headers }),
-        fetch('http://localhost:3001/api/projects', { headers }),
-        fetch('http://localhost:3001/api/users', { headers })
-          .then(response => response)
-          .catch(() => null)
-      ]);
-
-      if (tasksRes.ok) {
-        const tasksData = await tasksRes.json();
-        setTasks(tasksData);
+      if (tasksError) {
+        console.error('Error fetching tasks:', tasksError);
+      } else {
+        const formattedTasks = tasksData?.map(task => ({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: task.status,
+          project_id: task.project_id,
+          project_name: task.projects?.name || 'Projeto Desconhecido',
+          assigned_to: task.assigned_to || '',
+          assigned_name: task.users?.name,
+          created_at: task.created_at
+        })) || [];
+        setTasks(formattedTasks);
       }
 
-      if (projectsRes.ok) {
-        const projectsData = await projectsRes.json();
-        setProjects(projectsData);
+      // Buscar projetos
+      const { data: projectsData, error: projectsError } = await supabase
+        .from('projects')
+        .select('id, name')
+        .order('name');
+
+      if (projectsError) {
+        console.error('Error fetching projects:', projectsError);
+      } else {
+        setProjects(projectsData || []);
       }
 
-      if (usersRes && usersRes.ok) {
-        const usersData = await usersRes.json();
-        setUsers(usersData);
+      // Buscar usuários
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, name, role')
+        .order('name');
+
+      if (usersError) {
+        console.error('Error fetching users:', usersError);
+      } else {
+        setUsers(usersData || []);
       }
     } catch (error) {
       toast({
@@ -127,20 +158,25 @@ const Tasks = () => {
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     try {
-      const response = await fetch('http://localhost:3001/api/tasks', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newTask),
-      });
+      const { error } = await supabase
+        .from('tasks')
+        .insert({
+          title: newTask.title,
+          description: newTask.description,
+          project_id: newTask.project_id,
+          assigned_to: newTask.assigned_to || null,
+          status: newTask.status
+        });
 
-      if (response.ok) {
+      if (error) {
+        console.error('Error creating task:', error);
+        toast({
+          title: 'Erro ao criar tarefa',
+          description: 'Não foi possível criar a tarefa',
+          variant: 'destructive',
+        });
+      } else {
         toast({
           title: 'Tarefa criada com sucesso!',
           description: `A tarefa "${newTask.title}" foi criada.`,
@@ -149,60 +185,47 @@ const Tasks = () => {
         setNewTask({
           title: '',
           description: '',
-          projectId: selectedProjectId || '',
-          assignedTo: '',
+          project_id: selectedProjectId || '',
+          assigned_to: '',
           status: 'pending'
         });
         setIsDialogOpen(false);
-        fetchData(token);
-      } else {
-        const data = await response.json();
-        toast({
-          title: 'Erro ao criar tarefa',
-          description: data.error || 'Não foi possível criar a tarefa',
-          variant: 'destructive',
-        });
+        fetchData();
       }
     } catch (error) {
       toast({
         title: 'Erro de conexão',
-        description: 'Não foi possível conectar ao servidor',
+        description: 'Não foi possível conectar ao Supabase',
         variant: 'destructive',
       });
     }
   };
 
   const handleUpdateTaskStatus = async (taskId: string, newStatus: string) => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-
     try {
-      const response = await fetch(`http://localhost:3001/api/tasks/${taskId}`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ status: newStatus }),
-      });
+      const { error } = await supabase
+        .from('tasks')
+        .update({ status: newStatus })
+        .eq('id', taskId);
 
-      if (response.ok) {
-        toast({
-          title: 'Status atualizado!',
-          description: 'O status da tarefa foi atualizado com sucesso.',
-        });
-        fetchData(token);
-      } else {
+      if (error) {
+        console.error('Error updating task:', error);
         toast({
           title: 'Erro ao atualizar status',
           description: 'Não foi possível atualizar o status da tarefa',
           variant: 'destructive',
         });
+      } else {
+        toast({
+          title: 'Status atualizado!',
+          description: 'O status da tarefa foi atualizado com sucesso.',
+        });
+        fetchData();
       }
     } catch (error) {
       toast({
         title: 'Erro de conexão',
-        description: 'Não foi possível conectar ao servidor',
+        description: 'Não foi possível conectar ao Supabase',
         variant: 'destructive',
       });
     }
@@ -240,7 +263,7 @@ const Tasks = () => {
   };
 
   const filteredTasks = selectedProjectId 
-    ? tasks.filter(task => task.projectId === selectedProjectId)
+    ? tasks.filter(task => task.project_id === selectedProjectId)
     : tasks;
 
   const selectedProject = projects.find(p => p.id === selectedProjectId);
@@ -326,8 +349,8 @@ const Tasks = () => {
                     <div>
                       <Label htmlFor="project">Projeto</Label>
                       <Select
-                        value={newTask.projectId}
-                        onValueChange={(value) => setNewTask({ ...newTask, projectId: value })}
+                        value={newTask.project_id}
+                        onValueChange={(value) => setNewTask({ ...newTask, project_id: value })}
                         required
                       >
                         <SelectTrigger>
@@ -346,8 +369,8 @@ const Tasks = () => {
                     <div>
                       <Label htmlFor="assignedTo">Atribuir para</Label>
                       <Select
-                        value={newTask.assignedTo}
-                        onValueChange={(value) => setNewTask({ ...newTask, assignedTo: value })}
+                        value={newTask.assigned_to}
+                        onValueChange={(value) => setNewTask({ ...newTask, assigned_to: value })}
                       >
                         <SelectTrigger>
                           <SelectValue placeholder="Selecione um usuário" />
@@ -428,23 +451,23 @@ const Tasks = () => {
                   <div className="space-y-2 text-sm text-gray-500 mb-4">
                     <div className="flex items-center gap-2">
                       <FolderOpen className="w-4 h-4" />
-                      <span>{task.projectName}</span>
+                      <span>{task.project_name}</span>
                     </div>
-                    {task.assignedName && (
+                    {task.assigned_name && (
                       <div className="flex items-center gap-2">
                         <User className="w-4 h-4" />
-                        <span>Atribuído para: {task.assignedName}</span>
+                        <span>Atribuído para: {task.assigned_name}</span>
                       </div>
                     )}
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       <span>
-                        {new Date(task.createdAt).toLocaleDateString('pt-BR')}
+                        {new Date(task.created_at).toLocaleDateString('pt-BR')}
                       </span>
                     </div>
                   </div>
                   
-                  {(user?.role === 'admin' || task.assignedTo === user?.id) && (
+                  {(user?.role === 'admin' || task.assigned_to === user?.id) && (
                     <div className="pt-4 border-t">
                       <Label className="text-xs text-gray-500 mb-2 block">
                         Atualizar Status:

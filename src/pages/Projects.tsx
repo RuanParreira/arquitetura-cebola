@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { FolderOpen, Plus, ArrowLeft, User, Calendar } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
 
 interface User {
   id: string;
@@ -22,9 +23,9 @@ interface Project {
   id: string;
   name: string;
   description: string;
-  ownerId: string;
-  ownerName: string;
-  createdAt: string;
+  owner_id: string;
+  owner_name: string;
+  created_at: string;
 }
 
 const Projects = () => {
@@ -45,32 +46,45 @@ const Projects = () => {
     }
 
     setUser(JSON.parse(userData));
-    fetchProjects(token);
+    fetchProjects();
   }, [navigate]);
 
-  const fetchProjects = async (token: string) => {
+  const fetchProjects = async () => {
     try {
-      const response = await fetch('http://localhost:3001/api/projects', {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      const { data, error } = await supabase
+        .from('projects')
+        .select(`
+          id,
+          name,
+          description,
+          owner_id,
+          created_at,
+          users!projects_owner_id_fkey(name)
+        `)
+        .order('created_at', { ascending: false });
 
-      if (response.ok) {
-        const data = await response.json();
-        setProjects(data);
-      } else {
+      if (error) {
+        console.error('Error fetching projects:', error);
         toast({
           title: 'Erro ao carregar projetos',
           description: 'Não foi possível carregar a lista de projetos',
           variant: 'destructive',
         });
+      } else {
+        const formattedProjects = data?.map(project => ({
+          id: project.id,
+          name: project.name,
+          description: project.description,
+          owner_id: project.owner_id,
+          owner_name: project.users?.name || 'Desconhecido',
+          created_at: project.created_at
+        })) || [];
+        setProjects(formattedProjects);
       }
     } catch (error) {
       toast({
         title: 'Erro de conexão',
-        description: 'Não foi possível conectar ao servidor',
+        description: 'Não foi possível conectar ao Supabase',
         variant: 'destructive',
       });
     } finally {
@@ -81,20 +95,25 @@ const Projects = () => {
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    const token = localStorage.getItem('token');
-    if (!token) return;
+    if (!user) return;
 
     try {
-      const response = await fetch('http://localhost:3001/api/projects', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(newProject),
-      });
+      const { error } = await supabase
+        .from('projects')
+        .insert({
+          name: newProject.name,
+          description: newProject.description,
+          owner_id: user.id
+        });
 
-      if (response.ok) {
+      if (error) {
+        console.error('Error creating project:', error);
+        toast({
+          title: 'Erro ao criar projeto',
+          description: 'Não foi possível criar o projeto',
+          variant: 'destructive',
+        });
+      } else {
         toast({
           title: 'Projeto criado com sucesso!',
           description: `O projeto "${newProject.name}" foi criado.`,
@@ -102,19 +121,12 @@ const Projects = () => {
         
         setNewProject({ name: '', description: '' });
         setIsDialogOpen(false);
-        fetchProjects(token);
-      } else {
-        const data = await response.json();
-        toast({
-          title: 'Erro ao criar projeto',
-          description: data.error || 'Não foi possível criar o projeto',
-          variant: 'destructive',
-        });
+        fetchProjects();
       }
     } catch (error) {
       toast({
         title: 'Erro de conexão',
-        description: 'Não foi possível conectar ao servidor',
+        description: 'Não foi possível conectar ao Supabase',
         variant: 'destructive',
       });
     }
@@ -256,12 +268,12 @@ const Projects = () => {
                   <div className="space-y-2 text-sm text-gray-500">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4" />
-                      <span>Criado por: {project.ownerName}</span>
+                      <span>Criado por: {project.owner_name}</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="w-4 h-4" />
                       <span>
-                        {new Date(project.createdAt).toLocaleDateString('pt-BR')}
+                        {new Date(project.created_at).toLocaleDateString('pt-BR')}
                       </span>
                     </div>
                   </div>
