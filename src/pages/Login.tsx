@@ -7,7 +7,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { LogIn, User, Key } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 const Login = () => {
   const [clientId, setClientId] = useState('');
@@ -20,43 +19,41 @@ const Login = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('users')
-        .select('*')
-        .eq('client_id', clientId)
-        .eq('client_secret', clientSecret)
-        .single();
+      const response = await fetch('http://localhost:3001/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          client_id: clientId,
+          client_secret: clientSecret,
+        }),
+      });
 
-      if (error || !data) {
+      const data = await response.json();
+
+      if (!response.ok) {
         toast({
           title: 'Erro no login',
-          description: 'Credenciais inválidas',
+          description: data.error || 'Credenciais inválidas',
           variant: 'destructive',
         });
         return;
       }
 
-      // Simulando um token JWT (em produção, use auth real)
-      const mockToken = btoa(JSON.stringify({ userId: data.id, role: data.role }));
-      
-      localStorage.setItem('token', mockToken);
-      localStorage.setItem('user', JSON.stringify({
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        role: data.role
-      }));
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
       
       toast({
         title: 'Login realizado com sucesso!',
-        description: `Bem-vindo, ${data.name}`,
+        description: `Bem-vindo, ${data.user.name}`,
       });
       
       navigate('/dashboard');
     } catch (error) {
       toast({
         title: 'Erro de conexão',
-        description: 'Não foi possível conectar ao Supabase',
+        description: 'Não foi possível conectar ao servidor',
         variant: 'destructive',
       });
     } finally {

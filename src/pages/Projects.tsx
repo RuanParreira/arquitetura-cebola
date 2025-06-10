@@ -10,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { toast } from '@/hooks/use-toast';
 import { FolderOpen, Plus, ArrowLeft, User, Calendar } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
 
 interface User {
   id: string;
@@ -23,9 +22,9 @@ interface Project {
   id: string;
   name: string;
   description: string;
-  owner_id: string;
-  owner_name: string;
-  created_at: string;
+  ownerId: string;
+  ownerName: string;
+  createdAt?: string;
 }
 
 const Projects = () => {
@@ -51,40 +50,24 @@ const Projects = () => {
 
   const fetchProjects = async () => {
     try {
-      const { data, error } = await supabase
-        .from('projects')
-        .select(`
-          id,
-          name,
-          description,
-          owner_id,
-          created_at,
-          users!projects_owner_id_fkey(name)
-        `)
-        .order('created_at', { ascending: false });
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3001/api/projects', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (error) {
-        console.error('Error fetching projects:', error);
-        toast({
-          title: 'Erro ao carregar projetos',
-          description: 'Não foi possível carregar a lista de projetos',
-          variant: 'destructive',
-        });
+      if (response.ok) {
+        const data = await response.json();
+        setProjects(data);
       } else {
-        const formattedProjects = data?.map(project => ({
-          id: project.id,
-          name: project.name,
-          description: project.description,
-          owner_id: project.owner_id,
-          owner_name: project.users?.name || 'Desconhecido',
-          created_at: project.created_at
-        })) || [];
-        setProjects(formattedProjects);
+        throw new Error('Failed to fetch projects');
       }
     } catch (error) {
+      console.error('Error fetching projects:', error);
       toast({
-        title: 'Erro de conexão',
-        description: 'Não foi possível conectar ao Supabase',
+        title: 'Erro ao carregar projetos',
+        description: 'Não foi possível carregar a lista de projetos',
         variant: 'destructive',
       });
     } finally {
@@ -98,22 +81,20 @@ const Projects = () => {
     if (!user) return;
 
     try {
-      const { error } = await supabase
-        .from('projects')
-        .insert({
+      const token = localStorage.getItem('token');
+      const response = await fetch('http://localhost:3001/api/projects', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({
           name: newProject.name,
           description: newProject.description,
-          owner_id: user.id
-        });
+        }),
+      });
 
-      if (error) {
-        console.error('Error creating project:', error);
-        toast({
-          title: 'Erro ao criar projeto',
-          description: 'Não foi possível criar o projeto',
-          variant: 'destructive',
-        });
-      } else {
+      if (response.ok) {
         toast({
           title: 'Projeto criado com sucesso!',
           description: `O projeto "${newProject.name}" foi criado.`,
@@ -122,11 +103,15 @@ const Projects = () => {
         setNewProject({ name: '', description: '' });
         setIsDialogOpen(false);
         fetchProjects();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error);
       }
     } catch (error) {
+      console.error('Error creating project:', error);
       toast({
-        title: 'Erro de conexão',
-        description: 'Não foi possível conectar ao Supabase',
+        title: 'Erro ao criar projeto',
+        description: 'Não foi possível criar o projeto',
         variant: 'destructive',
       });
     }
@@ -268,14 +253,16 @@ const Projects = () => {
                   <div className="space-y-2 text-sm text-gray-500">
                     <div className="flex items-center gap-2">
                       <User className="w-4 h-4" />
-                      <span>Criado por: {project.owner_name}</span>
+                      <span>Criado por: {project.ownerName}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>
-                        {new Date(project.created_at).toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
+                    {project.createdAt && (
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4" />
+                        <span>
+                          {new Date(project.createdAt).toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                    )}
                   </div>
                   
                   <div className="mt-4 pt-4 border-t">

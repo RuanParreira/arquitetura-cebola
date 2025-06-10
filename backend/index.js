@@ -2,10 +2,10 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const dbConnection = require('./src/infrastructure/database/sqlite-connection');
-const SQLiteUserRepository = require('./src/infrastructure/repositories/SQLiteUserRepository');
-const SQLiteProjectRepository = require('./src/infrastructure/repositories/SQLiteProjectRepository');
-const SQLiteTaskRepository = require('./src/infrastructure/repositories/SQLiteTaskRepository');
+const dbConnection = require('./src/infrastructure/database/supabase-connection');
+const SupabaseUserRepository = require('./src/infrastructure/repositories/SupabaseUserRepository');
+const SupabaseProjectRepository = require('./src/infrastructure/repositories/SupabaseProjectRepository');
+const SupabaseTaskRepository = require('./src/infrastructure/repositories/SupabaseTaskRepository');
 
 // Routes
 const createAuthRoutes = require('./src/presentation/routes/authRoutes');
@@ -26,12 +26,12 @@ let userRepository, projectRepository, taskRepository;
 const initializeApp = async () => {
   try {
     await dbConnection.connect();
-    const db = dbConnection.getDatabase();
+    const supabase = dbConnection.getDatabase();
     
     // Initialize repositories
-    userRepository = new SQLiteUserRepository(db);
-    projectRepository = new SQLiteProjectRepository(db);
-    taskRepository = new SQLiteTaskRepository(db);
+    userRepository = new SupabaseUserRepository(supabase);
+    projectRepository = new SupabaseProjectRepository(supabase);
+    taskRepository = new SupabaseTaskRepository(supabase);
 
     // Setup routes
     app.use('/api/auth', createAuthRoutes(userRepository));
@@ -41,7 +41,7 @@ const initializeApp = async () => {
 
     // Health check
     app.get('/api/health', (req, res) => {
-      res.json({ status: 'OK', message: 'Project Management API is running' });
+      res.json({ status: 'OK', message: 'Project Management API is running with Supabase' });
     });
 
     // 404 handler
