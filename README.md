@@ -150,4 +150,4 @@ Dados iniciais são criados automaticamente com o comando `npm run init-db`.
 
 ---
 
-**Desenvolvido com ❤️ usando as melhores práticas de desenvolvimento**
+**Desenvolvido com ❤️ por Ruan, Leandro, Walysson**
