@@ -3,6 +3,25 @@
 
 Sistema fullstack completo para gerenciamento de projetos e tarefas, desenvolvido com arquitetura Onion no backend e React no frontend.
 
+## 📸 Telas
+
+![Dashboard do administrador](docs/screenshots/dashboard-admin.png)
+
+| Login | Projetos |
+|---|---|
+| ![Login](docs/screenshots/login.png) | ![Projetos](docs/screenshots/projetos.png) |
+
+| Tarefas (admin) | Dashboard do colaborador |
+|---|---|
+| ![Tarefas](docs/screenshots/tarefas-admin.png) | ![Dashboard do colaborador](docs/screenshots/dashboard-colaborador.png) |
+
+<details>
+<summary>Versão mobile</summary>
+
+<img src="docs/screenshots/dashboard-mobile.png" alt="Dashboard no celular" width="300" />
+
+</details>
+
 ## 🌟 Características Principais
 
 - **Autenticação JWT** com client_id e client_secret
